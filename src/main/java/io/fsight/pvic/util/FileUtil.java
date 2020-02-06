@@ -8,6 +8,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 
 public class FileUtil {
@@ -23,6 +24,7 @@ public class FileUtil {
         FileOutputStream fos = new FileOutputStream(file);
         try(BufferedWriter bf = new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
             CSVPrinter csvPrinter = new CSVPrinter(bf, CSVFormat.DEFAULT.withHeader(HEADERS))) {
+            Collections.sort(devices);
             for(Device device : devices) {
                 csvPrinter.printRecord(getValues(device));
             }
