@@ -56,6 +56,7 @@ public class ScheduledService {
         Thread.sleep(7000); //waiting for loading
 
         devices.addAll(parseDevices(trs));
+        driver.close();
 
         FileUtil.createCSV(devices);
         System.out.println("Scheduled successfully ended");
