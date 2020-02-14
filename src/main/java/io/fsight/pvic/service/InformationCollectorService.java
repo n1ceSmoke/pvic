@@ -30,6 +30,8 @@ public class InformationCollectorService {
             "SMC 6000TL 795", "SMC 9000TL 105", "SMC 9000TL 503",
             "STP 17000TL-10 431", "STP 17000TL-10 435", "STP 17000TL-10 561");
 
+    private static LocalDate date = LocalDate.now();
+
     public void runScraping() throws InterruptedException, IOException {
         FileUtil.createCSV(collectInformationFromSunnyPortal());
     }
@@ -38,7 +40,6 @@ public class InformationCollectorService {
         System.out.println("get resource");
         DesiredCapabilities caps = new DesiredCapabilities();
         List<Device> devices = new ArrayList<>();
-        LocalDate date = LocalDate.now();
         caps.setJavascriptEnabled(true);
         caps.setCapability("takesScreenshot", true);
         caps.setCapability("phantomjs.binary.path", System.getProperty("user.dir") + "/phantomjs/bin/phantomjs");
@@ -61,16 +62,26 @@ public class InformationCollectorService {
         while(date.isAfter(LocalDate.now().minus(2, ChronoUnit.YEARS))) {
             WebElement oneDayBack = driver.findElement(By.id("ctl00_ContentPlaceHolder1_UserControlShowAnalysisTool1_ChartLeftButton_ImageButton"));
             oneDayBack.click();
+            devices.addAll(parseData(driver));
+        }
+        driver.close();
+        return devices;
+    }
+
+    private List<Device> parseData(WebDriver driver) throws InterruptedException {
+        List<Device> devices = new ArrayList<>();
+        if(driver.findElement(By.id("ctl00_ContentPlaceHolder1_UserControlShowAnalysisTool1_ChartLeftButton_ImageButton"))
+                .getAttribute("disabled") != null) {
             Thread.sleep(7000);
             date = date.minus(1, ChronoUnit.DAYS);
             System.out.println(date);
-            page = driver.getPageSource();
             List<WebElement> trs = getAndCheckTrs(driver);
             List<Device> dallyReport = parseDevices(trs, date);
             devices.addAll(dallyReport);
-
+        } else {
+            updateData(driver);
+            parseData(driver);
         }
-        driver.close();
         return devices;
     }
 
@@ -100,13 +111,26 @@ public class InformationCollectorService {
         return devices;
     }
 
-    private List<WebElement> getAndCheckTrs(WebDriver driver) {
+    private List<WebElement> getAndCheckTrs(WebDriver driver) throws InterruptedException {
         List<WebElement> trs = getTrs(driver);
         List<WebElement> firstTds = trs.stream().map(tr -> tr.findElements(By.tagName("td"))).findFirst().get();
         if(firstTds.size() != 11) {
-            getAndCheckTrs(driver);
+            getAndCheckTrs(updateData(driver));
         }
         return trs;
+    }
+
+    private WebDriver updateData(WebDriver driver) throws InterruptedException {
+        WebElement checkBox = driver.findElement(By.id("ctl00_ContentPlaceHolder1_UserControlShowAnalysisTool1_DeviceSelection_SelectAllCheckBox"));
+        if(checkBox.getAttribute("checked") != null) {
+            checkBox.click();
+        }
+        Thread.sleep(7000);
+        driver.findElement(By.id("ctl00_ContentPlaceHolder1_UserControlShowAnalysisTool1_ChartLeftButton_ImageButton")).click();
+        Thread.sleep(7000);
+        driver.findElement(By.id("ctl00_ContentPlaceHolder1_UserControlShowAnalysisTool1_ChartRightButton_ImageButton")).click();
+        Thread.sleep(7000);
+        return driver;
     }
 
     private List<WebElement> getTrs(WebDriver driver) {
